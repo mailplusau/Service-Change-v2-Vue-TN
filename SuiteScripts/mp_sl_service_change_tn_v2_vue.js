@@ -162,7 +162,17 @@ const getOperations = {
 }
 
 const postOperations = {
+    'verifyParameters' : function (response, {customerId, salesRecordId, commRegId}) {
+        let {runtime} = NS_MODULES;
 
+        _writeResponseJson(response, {
+            customerId: parseInt(customerId),
+            salesRecordId: parseInt(salesRecordId),
+            commRegId: parseInt(commRegId),
+            userId: runtime['getCurrentUser']().id,
+            userRole: runtime['getCurrentUser']().role,
+        });
+    },
 };
 
 
