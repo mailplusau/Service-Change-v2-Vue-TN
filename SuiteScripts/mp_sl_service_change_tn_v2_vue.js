@@ -158,7 +158,44 @@ function _writeResponseJson(response, body) {
 }
 
 const getOperations = {
+    'getSelectOptions' : function (response, {id, type, valueColumnName, textColumnName}) {
+        let {search} = NS_MODULES;
+        let data = [];
 
+        search.create({
+            id, type,
+            columns: [{name: valueColumnName}, {name: textColumnName}]
+        }).run().each(result => {
+            data.push({value: result.getValue(valueColumnName), text: result.getValue(textColumnName)});
+            return true;
+        });
+
+        _writeResponseJson(response, data);
+    },
+    'getServiceTypes' : function (response) {
+        let {search} = NS_MODULES;
+        let data = [];
+
+        let searchResult = search.create({
+            type: 'customrecord_service_type',
+            filters: [
+                {name: 'custrecord_service_type_category', operator: 'anyof', values: [1]},
+            ],
+            columns: [
+                {name: 'internalid'},
+                {name: 'custrecord_service_type_ns_item_array'},
+                {name: 'name'}
+            ]
+        }).run();
+
+        searchResult.each(item => {
+            data.push({value: item.getValue('internalid'), text: item.getValue('name')})
+
+            return true;
+        });
+
+        _writeResponseJson(response, data);
+    },
 }
 
 const postOperations = {
