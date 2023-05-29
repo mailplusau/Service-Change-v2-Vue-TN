@@ -196,6 +196,63 @@ const getOperations = {
 
         _writeResponseJson(response, data);
     },
+    'getServiceChanges' : function (response, {commRegId}) {
+        let {search} = NS_MODULES;
+        let data = [];
+
+        let serviceChangeSearch = search.load({id: 'customsearch_smc_service_chg', type: 'customrecord_servicechg'});
+
+        serviceChangeSearch.filters.push(search.createFilter({
+            name: 'custrecord_servicechg_comm_reg',
+            operator: search.Operator.IS,
+            values: commRegId
+        }));
+
+        serviceChangeSearch.run().each(item => {
+            let tmp = {};
+
+            for (let column of item.columns) {
+                tmp[column.name] = item.getValue(column);
+                tmp[column.name + '_text'] = item.getText(column);
+            }
+
+            data.push(tmp);
+
+            return true;
+        })
+
+        _writeResponseJson(response, data);
+    },
+    'getAssignedServices' : function (response, {customerId}) {
+        let {search} = NS_MODULES;
+        let data = [];
+
+        let serviceSearch = search.load({
+            id: 'customsearch_salesp_services',
+            type: 'customrecord_service'
+        });
+
+        serviceSearch.filters.push(search.createFilter({
+            name: 'custrecord_service_customer',
+            operator: search.Operator.ANYOF,
+            values: customerId
+        }));
+
+        serviceSearch.run().each(function (item) {
+            let tmp = {};
+
+            for (let column of item.columns) {
+                tmp[column.name] = item.getValue(column);
+                tmp[column.name + '_text'] = item.getText(column);
+            }
+
+            data.push(tmp);
+
+            return true;
+        });
+
+        _writeResponseJson(response, data);
+    },
 }
 
 const postOperations = {
