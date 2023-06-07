@@ -124,7 +124,7 @@ function _handleGETRequests(request, response) {
 
         if (!operation) throw 'No operation specified.';
 
-        if (!getOperations[operation]) throw `Operation [${operation}] is not supported.`;
+        if (!getOperations[operation]) throw `The GET operation [${operation}] is not supported.`;
 
         getOperations[operation](response, requestParams);
     } catch (e) {
@@ -140,6 +140,8 @@ function _handlePOSTRequests({operation, requestParams}, response) {
 
     try {
         if (!operation) throw 'No operation specified.';
+
+        if (!postOperations[operation]) throw `The POST operation [${operation}] is not supported.`;
 
         // _writeResponseJson(response, {source: '_handlePOSTRequests', operation, requestParams});
         postOperations[operation](response, requestParams);
