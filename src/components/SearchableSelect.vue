@@ -1,7 +1,7 @@
 <template>
     <b-dropdown menu-class="w-100" no-caret
                 variant="outline"
-                class="form-control searchable-select" ref="dropdownButton" @shown="onDropDownShown" :disabled="disabled" :style="cssProps">
+                class="form-control searchable-select" ref="dropdownButton" @shown="onDropDownShown" @hidden="onDropDownHidden" :disabled="disabled" :style="cssProps">
         <template v-slot:button-content>
             <input
                 id="input-1"
@@ -71,11 +71,12 @@ export default {
             search: '',
             displayValue: '',
             selectedIndex: -1,
+            zIndex: 0,
         }
     },
     created() {
         let index = this.filteredOptions.findIndex(item => item.value === this.value);
-        if (index >= 0) this.displayValue = this.filteredOptions[index].text;
+        this.displayValue =  index >= 0 ?  this.filteredOptions[index].text : '';
     },
     mounted() {
         this.$refs.searchInput.$el.addEventListener('keydown', this.onKeyDown);
@@ -104,9 +105,13 @@ export default {
             this.selectedIndex = index;
         },
         onDropDownShown() {
+            this.zIndex = 4;
             this.$nextTick(() => {
                 this.$refs.searchInput.focus();
             })
+        },
+        onDropDownHidden() {
+            this.zIndex = 3;
         },
         submitSearch() { // Hitting [Enter] in the search box, we select the highlighted option
             if (this.selectedIndex < 0) return;
@@ -130,13 +135,14 @@ export default {
         cssProps() {
             return {
                 '--drop-down-panel-max-height': this.maxHeight,
+                'z-index': this.zIndex,
             }
         }
     },
     watch: {
         value(val) {
             let index = this.filteredOptions.findIndex(item => item.value === val);
-            if (index >= 0) this.displayValue = this.filteredOptions[index].text;
+            this.displayValue =  index >= 0 ?  this.filteredOptions[index].text : '';
         }
     }
 }
