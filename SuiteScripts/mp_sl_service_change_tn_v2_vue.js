@@ -204,6 +204,27 @@ const getOperations = {
     'getAssignedServices' : function (response, {customerId}) {
         _writeResponseJson(response, sharedFunctions.getAssignedServices(customerId));
     },
+    'getCustomerDetails': function (response, {customerId, fieldIds}) {
+        if (!customerId) return _writeResponseJson(response, {error: `Invalid Customer ID: ${customerId}`});
+
+        _writeResponseJson(response, sharedFunctions.getCustomerData(customerId, fieldIds));
+    },
+    'getCommencementRegister' : function (response, {commRegId, fieldIds}) {
+        let {record} = NS_MODULES;
+        let data = {};
+
+        let commRegRecord = record.load({
+            type: 'customrecord_commencement_register',
+            id: commRegId,
+        });
+
+        for (let fieldId of fieldIds) {
+            data[fieldId] = commRegRecord.getValue({fieldId});
+            data[fieldId + '_text'] = commRegRecord.getText({fieldId});
+        }
+
+        _writeResponseJson(response, data);
+    },
 }
 
 const postOperations = {
