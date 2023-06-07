@@ -199,6 +199,45 @@ const getOperations = {
         _writeResponseJson(response, data);
     },
     'getServiceChanges' : function (response, {commRegId}) {
+        _writeResponseJson(response, sharedFunctions.getServiceChanges(commRegId));
+    },
+    'getAssignedServices' : function (response, {customerId}) {
+        _writeResponseJson(response, sharedFunctions.getAssignedServices(customerId));
+    },
+}
+
+const postOperations = {
+    'verifyParameters' : function (response, {customerId, salesRecordId, commRegId}) {
+        let {runtime} = NS_MODULES;
+
+        _writeResponseJson(response, {
+            customerId: parseInt(customerId),
+            salesRecordId: parseInt(salesRecordId),
+            commRegId: parseInt(commRegId),
+            userId: runtime['getCurrentUser']().id,
+            userRole: runtime['getCurrentUser']().role,
+        });
+    },
+};
+
+const sharedFunctions = {
+    getCustomerData(customerId, fieldIds) {
+        let {record} = NS_MODULES;
+        let data = {};
+
+        let customerRecord = record.load({
+            type: record.Type.CUSTOMER,
+            id: customerId,
+        });
+
+        for (let fieldId of fieldIds) {
+            data[fieldId] = customerRecord.getValue({fieldId});
+            data[fieldId + '_text'] = customerRecord.getText({fieldId});
+        }
+
+        return data;
+    },
+    getServiceChanges(commRegId) {
         let {search} = NS_MODULES;
         let data = [];
 
@@ -223,9 +262,9 @@ const getOperations = {
             return true;
         })
 
-        _writeResponseJson(response, data);
+        return data;
     },
-    'getAssignedServices' : function (response, {customerId}) {
+    getAssignedServices(customerId) {
         let {search} = NS_MODULES;
         let data = [];
 
@@ -253,24 +292,9 @@ const getOperations = {
             return true;
         });
 
-        _writeResponseJson(response, data);
-    },
+        return data;
+    }
 }
-
-const postOperations = {
-    'verifyParameters' : function (response, {customerId, salesRecordId, commRegId}) {
-        let {runtime} = NS_MODULES;
-
-        _writeResponseJson(response, {
-            customerId: parseInt(customerId),
-            salesRecordId: parseInt(salesRecordId),
-            commRegId: parseInt(commRegId),
-            userId: runtime['getCurrentUser']().id,
-            userRole: runtime['getCurrentUser']().role,
-        });
-    },
-};
-
 
 function _parseIsoDatetime(dateString, dateOnly = false) {
     let dt = dateString.split(/[: T-]/).map(parseFloat);
