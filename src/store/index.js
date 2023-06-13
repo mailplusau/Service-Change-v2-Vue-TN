@@ -67,6 +67,10 @@ const mutations = {
 const actions = {
     init: async context => {
         await _readAndVerifyUrlParams(context);
+
+        context.dispatch('misc/init').then();
+        context.dispatch('customer/init').then();
+        context.dispatch('comm-reg/init').then();
     },
     handleException: (context, {title, message}) => {
         context.commit('displayErrorGlobalModal', {
@@ -87,12 +91,13 @@ async function _readAndVerifyUrlParams(context) {
     let weirdParams = params['custparam_params'] ? JSON.parse(params['custparam_params']) : {};
     let salesRep = params['salesrep'];
 
-    let paramCustomerId = (salesRep ? weirdParams['custid'] : params['custid']) || null;
-    let paramSalesRecordId = (salesRep ? weirdParams['salesrecordid'] : params['salesrecordid']) || null;
-    let paramCommRegId = (salesRep ? weirdParams['commreg'] : params['commreg']) || null;
+    let paramCustomerId = (!salesRep ? weirdParams['custid'] : params['custid']) || null;
+    let paramSalesRecordId = (!salesRep ? weirdParams['salesrecordid'] : params['salesrecordid']) || null;
+    let paramCommRegId = (!salesRep ? weirdParams['commreg'] : params['commreg']) || null;
 
     try {
-        if (!paramCustomerId || !paramSalesRecordId || !paramCommRegId) {
+        if (!paramCustomerId) {
+            console.log('Missing parameters')
             context.commit('displayErrorGlobalModal', {
                 title: 'Missing parameters',
                 message: 'Please check that the url contains all necessary parameters.'
