@@ -239,6 +239,26 @@ const postOperations = {
             userRole: runtime['getCurrentUser']().role,
         });
     },
+    'deleteServiceChangeRecord' : function (response, {serviceChangeId}) {
+        let {record} = NS_MODULES;
+        let serviceChangeRecord = record.load({type: 'customrecord_servicechg', id: serviceChangeId});
+        let serviceId = serviceChangeRecord.getValue({fieldId: 'custrecord_servicechg_service'});
+        let serviceRecord = record.load({type: 'customrecord_service', id: serviceId});
+
+        record.delete({type: 'customrecord_servicechg', id: serviceChangeId});
+
+        // Only delete the associated service record if it is inactive
+        if (serviceRecord.getValue({fieldId: 'isinactive'})) record.delete({type: 'customrecord_service', id: serviceId});
+
+        _writeResponseJson(response, {serviceChangeId, serviceId});
+    },
+    'updateEffectiveDateForAll' : function (response, {commRegId, effectiveDate}) {
+        let serviceChanges = sharedFunctions.getServiceChanges(commRegId);
+
+        _updateDateEffectiveForAll(commRegId, serviceChanges, _parseIsoDatetime(effectiveDate, true));
+
+        _writeResponseJson(response, 'Effective Date Updated');
+    },
 };
 
 const sharedFunctions = {
@@ -315,6 +335,17 @@ const sharedFunctions = {
 
         return data;
     }
+}
+
+function _updateDateEffectiveForAll(commRegId, serviceChanges, dateEffective) {
+    let {record} = NS_MODULES;
+
+    serviceChanges.forEach(item => {
+        record.submitFields({type: 'customrecord_servicechg', id: item.id, values: {'custrecord_servicechg_date_effective': dateEffective}});
+    });
+
+    if (commRegId)
+        record.submitFields({type: 'customrecord_commencement_register', id: commRegId, values: {'custrecord_comm_date': dateEffective}});
 }
 
 function _parseIsoDatetime(dateString, dateOnly = false) {
