@@ -14,9 +14,9 @@ const initialTitle = 'Add / Edit Service';
 let NS_MODULES = {};
 
 
-define(['N/ui/serverWidget', 'N/render', 'N/search', 'N/file', 'N/log', 'N/record', 'N/email', 'N/runtime', 'N/https', 'N/task', 'N/format', 'N/url'],
-    (serverWidget, render, search, file, log, record, email, runtime, https, task, format, url) => {
-    NS_MODULES = {serverWidget, render, search, file, log, record, email, runtime, https, task, format, url};
+define(['N/ui/serverWidget', 'N/render', 'N/search', 'N/file', 'N/log', 'N/record', 'N/email', 'N/runtime', 'N/https', 'N/task', 'N/format', 'N/url', 'N/redirect'],
+    (serverWidget, render, search, file, log, record, email, runtime, https, task, format, url, redirect) => {
+    NS_MODULES = {serverWidget, render, search, file, log, record, email, runtime, https, task, format, url, redirect};
     
     const onRequest = ({request, response}) => {
         if (request.method === "GET") {
@@ -224,6 +224,11 @@ const getOperations = {
         }
 
         _writeResponseJson(response, data);
+    },
+    'getScriptUrl' : function (response, {scriptId, deploymentId, params, returnExternalUrl = false}) {
+        let {url} = NS_MODULES;
+
+        _writeResponseJson(response, url.resolveScript({scriptId, deploymentId, params, returnExternalUrl}));
     },
 }
 
