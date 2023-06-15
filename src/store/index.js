@@ -44,6 +44,13 @@ const getters = {
     extraParams: state => state.extraParams,
 
     globalModal: state => state.globalModal,
+    nextPageToProceed: state => {
+        if (!state.isSalesRep && state.extraParams.sendEmail)
+            return state.extraParams.suspects ? 'Finalisation Page' : 'Create Multi-Site Quote: Update Suspects';
+        else if (!state.isSalesRep) return 'Service Creation Page';
+        else if (state.isSalesRep) return 'Finalisation Page';
+        else return null;
+    }
 };
 
 const mutations = {
@@ -80,9 +87,13 @@ const actions = {
     init: async context => {
         await _readAndVerifyUrlParams(context);
 
-        context.dispatch('misc/init').then();
-        context.dispatch('customer/init').then();
-        context.dispatch('comm-reg/init').then();
+        await Promise.allSettled([
+            context.dispatch('misc/init'),
+            context.dispatch('customer/init'),
+            context.dispatch('comm-reg/init'),
+        ]);
+
+        await context.dispatch('service-changes/init');
     },
     handleException: (context, {title, message}) => {
         context.commit('displayErrorGlobalModal', {
