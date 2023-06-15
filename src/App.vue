@@ -1,23 +1,41 @@
 <template>
-    <div id="app">
-        <img alt="Vue logo" src="./assets/logo.png">
-        <HelloWorld msg="Welcome to Your Vue.js App"/>
+    <div id="app" class="container-fluid px-4">
+        <ServiceChange />
+
+        <GlobalNoticeModal />
     </div>
 </template>
 
 <script>
-import HelloWorld from './components/HelloWorld.vue'
+import ServiceChange from './views/service-change/Main';
+import GlobalNoticeModal from "@/components/GlobalNoticeModal";
 
 export default {
     name: 'App',
     components: {
-        HelloWorld
+        GlobalNoticeModal,
+        ServiceChange
+    },
+    beforeCreate() {
+        this.$store.dispatch('init');
     },
     mounted() {
         this.registerCustomValidationRules();
     },
     methods: {
         registerCustomValidationRules() {
+            this.$validator.extend('date_after', {
+                getMessage(field) {
+                    return `the ${field} field must be tomorrow or further in the future.`;
+                },
+                validate(value) {
+                    let tomorrow = new Date();
+                    tomorrow.setDate(tomorrow.getDate() + 1);
+                    tomorrow.setHours(0, 0, 0, 0);
+
+                    return Object.prototype.toString.call(value) === '[object Date]' && value >= tomorrow;
+                }
+            });
             this.$validator.extend('aus_phone', {
                 getMessage(field) {
                     return `the ${field} field must be a valid Australian phone number.`;
