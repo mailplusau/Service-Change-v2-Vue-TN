@@ -264,6 +264,98 @@ const postOperations = {
 
         _writeResponseJson(response, 'Effective Date Updated');
     },
+    'saveServiceChangeRecord' : function (response, {customerId, salesRecordId = null, data, commRegId, extraParams = {}}) {
+        let {expSendEmail, expClosedWon} = extraParams;
+        let {record, runtime} = NS_MODULES;
+        let userId = runtime['getCurrentUser']().id;
+        let userRole = runtime['getCurrentUser']().role;
+        let customerRecord = record.load({type: record.Type.CUSTOMER, id: customerId});
+        let partnerId = parseInt(customerRecord.getValue({fieldId: 'partner'}));
+        let serviceRecord;
+        let freqTerms = ['mon', 'tue', 'wed', 'thu', 'fri', 'adhoc'];
+        let serviceChanges = sharedFunctions.getServiceChanges(commRegId);
+        let assignedServices = sharedFunctions.getAssignedServices(customerId);
+
+        // Create/edit service change record
+        let serviceChangeRecord = data.internalid ?
+            record.load({type: 'customrecord_servicechg', id: data.internalid, isDynamic: true}) :
+            record.create({type: 'customrecord_servicechg', isDynamic: true});
+
+        if (!data.internalid && !commRegId) // if this is brand new service change and no commRegId provided, we create a new one
+            commRegId = _createCommencementRegister(customerId, salesRecordId, data, extraParams);
+        else if (data.internalid) // if existing service change record, load commRegId from service change record and disregard the one from parameters
+            commRegId = serviceChangeRecord.getValue({fieldId: 'custrecord_servicechg_comm_reg'});
+
+        let oldFreq = serviceChangeRecord.getValue({fieldId: 'custrecord_servicechg_old_freq'});
+        let newFreq = serviceChangeRecord.getValue({fieldId: 'custrecord_servicechg_new_freq'});
+
+        let freqArray = ['mon', 'tue', 'wed', 'thu', 'fri', 'adhoc']
+            .map((item, index) => data['custrecord_service_day_' + item] ? (index + 1) : 0)
+            .filter(item => item);
+
+        serviceChangeRecord.setValue({fieldId: 'custrecord_servicechg_status', value: expSendEmail && !expClosedWon ? 4 : 1});
+        serviceChangeRecord.setValue({fieldId: 'custrecord_servicechg_new_price', value: data.custrecord_servicechg_new_price});
+        serviceChangeRecord.setValue({fieldId: 'custrecord_servicechg_old_price', value: data.custrecord_service_price});
+        serviceChangeRecord.setValue({fieldId: 'custrecord_servicechg_new_freq', value: freqArray});
+        serviceChangeRecord.setValue({fieldId: 'custrecord_servicechg_old_freq', value: oldFreq && oldFreq.length ? oldFreq : newFreq});
+        serviceChangeRecord.setValue({fieldId: 'custrecord_servicechg_type', value: data.custrecord_servicechg_type});
+        serviceChangeRecord.setValue({fieldId: 'custrecord_default_servicechg_record', value: 1});
+
+        if (commRegId) serviceChangeRecord.setValue({fieldId: 'custrecord_servicechg_comm_reg', value: commRegId});
+
+        // TODO: if commRegId is null then this status is 4 (Quoted)
+        if (data.custrecord_servicechg_type === 'Change of Entity') // If this is Change of Entity, status is Active
+            serviceChangeRecord.setValue({fieldId: 'custrecord_servicechg_status', value: 2});
+
+        if (userRole !== 1000) {
+            serviceChangeRecord.setValue({fieldId: 'custrecord_servicechg_created', value: userId});
+            serviceChangeRecord.setValue({fieldId: 'custrecord_servicechg_old_zee', value: partnerId});
+        } else
+            serviceChangeRecord.setValue({fieldId: 'custrecord_servicechg_old_zee', value: userId});
+
+        // Create/edit service record
+        if (data.internalid) // Existing service change record, we load the associated service
+            serviceRecord = record.load({type: 'customrecord_service', id: serviceChangeRecord.getValue({fieldId: 'custrecord_servicechg_service'}), isDynamic: true});
+        else if (data.service_internalid) // Existing service, we load it from the provided internal id
+            serviceRecord = record.load({type: 'customrecord_service', id: data.service_internalid, isDynamic: true});
+        else { // We need to create new service and set its initial fields
+            serviceRecord = record.create({type: 'customrecord_service', isDynamic: true});
+
+            serviceRecord.setValue({fieldId: 'custrecord_service', value: data.custrecord_service});
+            serviceRecord.setValue({fieldId: 'name', value: data.custrecord_service_text});
+            serviceRecord.setValue({fieldId: 'custrecord_service_price', value: data.custrecord_servicechg_new_price});
+            serviceRecord.setValue({fieldId: 'custrecord_service_customer', value: customerId});
+            serviceRecord.setValue({fieldId: 'custrecord_service_description', value: data.custrecord_service_description});
+
+            if (commRegId) serviceRecord.setValue({fieldId: 'custrecord_service_comm_reg', value: commRegId});
+        }
+
+        freqTerms.forEach(item => {serviceRecord.setValue({fieldId: 'custrecord_service_day_' + item, value: data['custrecord_service_day_' + item]});});
+
+        let serviceRecordId = serviceRecord.save({ignoreMandatoryFields: true});
+
+        if (!data.internalid) // This is a new service change record, we will give it the associated service record id
+            serviceChangeRecord.setValue({fieldId: 'custrecord_servicechg_service', value: serviceRecordId});
+
+        if (!data.internalid && !data.service_internalid) // Newly created service, set it as inactive first
+            record.submitFields({type: 'customrecord_service', id: serviceRecordId, values: {'isinactive': true}});
+
+        serviceChangeRecord.save({ignoreMandatoryFields: true});
+
+        // go through all service change records and service records to calculate the rate
+        let {monthlyServiceRate, monthlyExtraServiceRate, monthlyReducedServiceRate} = _calculateServiceRates(serviceChanges, assignedServices);
+
+        customerRecord.setValue({fieldId: 'custentity_cust_monthly_service_value', value: monthlyServiceRate * 4.25});
+        customerRecord.setValue({fieldId: 'custentity_monthly_extra_service_revenue', value: monthlyExtraServiceRate * 4.25});
+        customerRecord.setValue({fieldId: 'custentity_monthly_reduc_service_revenue', value: monthlyReducedServiceRate * 4.25});
+
+        customerRecord.save({ignoreMandatoryFields: true});
+
+        _updateDateEffectiveForAll(commRegId, serviceChanges, _parseIsoDatetime(data.custrecord_servicechg_date_effective, true));
+
+        // End
+        _writeResponseJson(response, {commRegId});
+    },
 };
 
 const sharedFunctions = {
@@ -351,6 +443,57 @@ function _updateDateEffectiveForAll(commRegId, serviceChanges, dateEffective) {
 
     if (commRegId)
         record.submitFields({type: 'customrecord_commencement_register', id: commRegId, values: {'custrecord_comm_date': dateEffective}});
+}
+
+function _calculateServiceRates(serviceChanges, assignedServices) {
+    let monthlyServiceRate = 0.0, monthlyExtraServiceRate = 0.0, monthlyReducedServiceRate = 0.0;
+    let freqTerms = ['mon', 'tue', 'wed', 'thu', 'fri', 'adhoc'];
+
+    [...serviceChanges, ...assignedServices].forEach(item => {
+        freqTerms.forEach(term => {
+            if (item['custrecord_service_day_' + term]) {
+                monthlyServiceRate += parseFloat(item['custrecord_servicechg_new_price']);
+
+                monthlyExtraServiceRate += ['Extra Service', 'Increase of Frequency'].includes(item['custrecord_servicechg_type']) ?
+                    parseFloat(item['custrecord_servicechg_new_price']) : 0;
+
+                monthlyReducedServiceRate += ['Reduction of Service', 'Price Decrease', 'Decrease of Frequency'].includes(item['custrecord_servicechg_type']) ?
+                    parseFloat(item['custrecord_servicechg_new_price']) : 0;
+            }
+        })
+    })
+
+    return {monthlyServiceRate, monthlyExtraServiceRate, monthlyReducedServiceRate};
+}
+
+function _createCommencementRegister(customerId, salesRecordId, data, extraParams) {
+    let {expSendEmail, expClosedWon} = extraParams;
+    let {record, runtime} = NS_MODULES;
+    let userId = runtime['getCurrentUser']().id;
+    let userRole = runtime['getCurrentUser']().role;
+    let customerRecord = record.load({type: record.Type.CUSTOMER, id: customerId});
+    let partnerId = parseInt(customerRecord.getValue({fieldId: 'partner'}));
+    let partnerRecord = record.load({type: 'partner', id: partnerId});
+    let state = partnerRecord.getValue({fieldId: 'location'});
+
+    let commRegRecord = record.create({type: 'customrecord_commencement_register'});
+
+    commRegRecord.setValue({fieldId: 'custrecord_date_entry', value: new Date()});
+    commRegRecord.setValue({fieldId: 'custrecord_comm_date', value: _parseIsoDatetime(data.custrecord_servicechg_date_effective, true)});
+    commRegRecord.setValue({fieldId: 'custrecord_comm_date_signup', value: _parseIsoDatetime(data.custrecord_servicechg_date_effective, true)});
+    commRegRecord.setValue({fieldId: 'custrecord_customer', value: customerId});
+    commRegRecord.setValue({fieldId: 'custrecord_salesrep', value: expSendEmail ? userId : 109783});
+    commRegRecord.setValue({fieldId: 'custrecord_std_equiv', value: 1});
+    commRegRecord.setValue({fieldId: 'custrecord_wkly_svcs', value: '5'});
+    commRegRecord.setValue({fieldId: 'custrecord_in_out', value: 2}); // Inbound
+    commRegRecord.setValue({fieldId: 'custrecord_state', value: state});
+    commRegRecord.setValue({fieldId: 'custrecord_trial_status', value: expSendEmail && !expClosedWon ? 10 : 9});
+    commRegRecord.setValue({fieldId: 'custrecord_sale_type', value: data.custrecord_servicechg_type_id});
+
+    if (userRole !== 1000) commRegRecord.setValue({fieldId: 'custrecord_franchisee', value: partnerId});
+    if (salesRecordId && expSendEmail) commRegRecord.setValue({fieldId: 'custrecord_commreg_sales_record', value: salesRecordId});
+
+    return commRegRecord.save({ignoreMandatoryFields: true});
 }
 
 function _parseIsoDatetime(dateString, dateOnly = false) {
