@@ -174,6 +174,51 @@ const getOperations = {
 
         _writeResponseJson(response, data);
     },
+    'getScheduledServiceChanges' : function (response, {customerId, commRegId, dateEffective}) {
+        let {search} = NS_MODULES;
+        let data = [];
+
+        let serviceChangeSearch = search.load({id: 'customsearch_smc_service_chg', type: 'customrecord_servicechg'});
+
+        serviceChangeSearch.filters.push(search.createFilter({
+            name: 'custrecord_servicechg_date_effective',
+            operator: search.Operator.ON,
+            values: dateEffective // This must be in format of DD/MM/YYYY
+        }));
+        serviceChangeSearch.filters.push(search.createFilter({
+            name: 'custrecord_servicechg_status',
+            operator: search.Operator.IS,
+            values: 1
+        }));
+        serviceChangeSearch.filters.push(search.createFilter({
+            name: 'custrecord_service_customer',
+            operator: search.Operator.IS,
+            join: 'CUSTRECORD_SERVICECHG_SERVICE',
+            values: customerId
+        }));
+
+        if (commRegId)
+            serviceChangeSearch.filters.push(search.createFilter({
+                name: 'custrecord_servicechg_comm_reg',
+                operator: search.Operator.NONEOF,
+                values: commRegId
+            }));
+
+        serviceChangeSearch.run().each(item => {
+            let tmp = {};
+
+            for (let column of item.columns) {
+                tmp[column.name + '_text'] = item.getText(column);
+                tmp[column.name] = item.getValue(column);
+            }
+
+            data.push(tmp);
+
+            return true;
+        })
+
+        _writeResponseJson(response, data);
+    },
     'getServiceTypes' : function (response) {
         let {search} = NS_MODULES;
         let data = [];
