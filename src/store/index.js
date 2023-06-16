@@ -22,6 +22,7 @@ const state = {
         closedWon: false,
         suspects: false,
         oppWithValue: false,
+        dateEffective: null,
     },
 
     globalModal: {
@@ -184,6 +185,7 @@ async function _readAndVerifyUrlParams(context) {
         context.state.extraParams.suspects = (!params['salesrep'] ? weirdParams['suspects'] : params['suspects']) || null;
         context.state.extraParams.closedWon = (!params['salesrep'] ? weirdParams['closedwon'] : params['closedwon']) || false;
         context.state.extraParams.oppWithValue = (!params['salesrep'] ? weirdParams['oppwithvalue'] : params['oppwithvalue']) || false;
+        context.state.extraParams.dateEffective = weirdParams['date'] || null;
     } catch (e) { console.error(e); }
 }
 
