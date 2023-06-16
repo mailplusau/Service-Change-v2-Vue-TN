@@ -30,13 +30,13 @@
                     What would you like to do?
                 </b-col>
                 <b-col cols="12" class="text-center">
-                    <b-button class="w-100 mt-3" variant="outline-primary" @click="apply">
+                    <b-button class="w-100 mt-3" variant="outline-primary" @click="applyDateSelectionGlobally">
                         Apply this to all existing service changes
                     </b-button>
-                    <b-button class="w-100 mt-3" variant="outline-primary" @click="keepWithoutApplying">
+                    <b-button class="w-100 mt-3" variant="outline-primary" @click="keepDateSelectionWithoutApplying">
                         Keep this without applying to existing service changes
                     </b-button>
-                    <b-button class="w-100 mt-3" variant="outline-danger" @click="cancel">
+                    <b-button class="w-100 mt-3" variant="outline-danger" @click="cancelDateSelection">
                         Cancel this change of global effective date
                     </b-button>
                 </b-col>
@@ -58,24 +58,25 @@ export default {
         handleGlobalEffectiveDateChanged() {
             this.modalOpen = true;
         },
-        apply() {
+        applyDateSelectionGlobally() {
             this.$store.getters['service-changes/modal'].oldGlobalEffectiveDate = this.$store.getters['service-changes/modal'].globalEffectiveDate;
             this.$store.dispatch('service-changes/applyGlobalEffectiveDate').then(() => {
                 this.modalOpen = false;
             });
         },
-        keepWithoutApplying() {
+        keepDateSelectionWithoutApplying() {
             this.$store.getters['service-changes/modal'].oldGlobalEffectiveDate = this.$store.getters['service-changes/modal'].globalEffectiveDate;
             this.$store.dispatch('service-changes/makeGlobalEffectiveDateDefault');
             this.modalOpen = false;
         },
-        cancel() {
+        cancelDateSelection() {
             this.$store.getters['service-changes/modal'].globalEffectiveDate = this.$store.getters['service-changes/modal'].oldGlobalEffectiveDate;
             this.modalOpen = false;
         },
         handleModalHide(event) {
             if(this.modalBusy) event.preventDefault();
-            else this.keepWithoutApplying();
+            else if (event.type === 'hide' && event.trigger === 'backdrop')
+                this.cancelDateSelection();
         },
     },
     computed: {
