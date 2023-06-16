@@ -2,7 +2,7 @@
     <div class="row justify-content-center" >
         <b-table :items="tableData" :fields="serviceChangeColumns" head-row-variant="light" :busy="busy" striped show-empty hover>
             <template v-slot:empty>
-                No Service Change Found
+                {{ hasScheduledChanges ? 'There are already scheduled changes' : 'No Service Change Found' }}
             </template>
 
             <template v-slot:thead-top>
@@ -57,7 +57,7 @@
                 <b-tr>
                     <b-td :colspan="serviceChangeColumns.length">
                         <b-button variant="outline-primary" size="sm" class="w-100"
-                                  @click="$store.dispatch('service-changes/openFormModal')" :disabled="busy">
+                                  @click="$store.dispatch('service-changes/openFormModal')" :disabled="busy || hasScheduledChanges">
                             Add New Service
                         </b-button>
                     </b-td>
@@ -97,8 +97,11 @@ export default {
         internalIdToDelete: null,
     }),
     computed: {
+        hasScheduledChanges() {
+            return this.$store.getters['service-changes/hasScheduledChanges'];
+        },
         tableData() {
-            return this.$store.getters['service-changes/tableData'];
+            return this.hasScheduledChanges ? [] : this.$store.getters['service-changes/tableData'];
         },
         busy() {
             return this.$store.getters['service-changes/busy'];

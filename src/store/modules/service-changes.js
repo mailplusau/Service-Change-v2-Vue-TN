@@ -3,6 +3,7 @@ import http from "@/utils/http";
 const state = {
     serviceChanges: [],
     services: [],
+    scheduledChanges: [],
     busy: true,
     modal: {
         defaults: {
@@ -38,6 +39,7 @@ const getters = {
     serviceChanges : state => state.serviceChanges,
     modal : state => state.modal,
     busy : state => state.busy,
+    hasScheduledChanges : state => !!state.scheduledChanges.length,
     tableData : state => [...state.serviceChanges, ...state.services.map(item => ({...item, isService: true}))]
 };
 
@@ -57,6 +59,8 @@ const actions = {
         await _getServiceChangesAndServices(context);
 
         _initGlobalEffectiveDate(context);
+
+        await _getExistingScheduledChanges(context);
 
         context.commit('resetForm');
 
@@ -123,6 +127,7 @@ const actions = {
     },
     makeGlobalEffectiveDateDefault : context => {
         context.state.modal.defaults.custrecord_servicechg_date_effective = context.state.modal.globalEffectiveDate;
+        _getExistingScheduledChanges(context).then();
     },
     delete : async (context, serviceChangeId) => {
         context.state.modal.busy = true;
@@ -175,6 +180,24 @@ async function _getServiceChangesAndServices(context) {
                 commRegId: context.rootGetters['commRegId']
             });
         }
+    } catch (e) { console.error(e); }
+}
+
+// Retrieve existing scheduled changes. If this result in a non-0 array, that means there are already scheduled changes.
+async function _getExistingScheduledChanges(context) {
+    if (Object.prototype.toString.call(context.state.modal.globalEffectiveDate) !== '[object Date]') return;
+
+    try {
+        _setTimeForDateObject(context.state.modal.globalEffectiveDate);
+
+        let dt = context.state.modal.globalEffectiveDate.toISOString().split(/[: T-]/).map(parseFloat);
+        let dateEffective = dt[2] + '/' + dt[1] + '/' + dt[0];
+
+        context.state.scheduledChanges = await http.get('getScheduledServiceChanges', {
+            customerId: context.rootGetters['customerId'],
+            commRegId: context.rootGetters['commRegId'],
+            dateEffective
+        });
     } catch (e) { console.error(e); }
 }
 
