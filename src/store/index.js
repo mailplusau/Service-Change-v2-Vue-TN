@@ -152,11 +152,11 @@ async function _readAndVerifyUrlParams(context) {
     });
 
     let weirdParams = params['custparam_params'] ? JSON.parse(params['custparam_params']) : {};
-    let salesRep = params['salesrep'] && params['salesrep'] === 'T';
+    let salesRep = params['salesrep'] || weirdParams['salesrep'] === 'T';
 
-    let paramCustomerId = (!salesRep ? weirdParams['custid'] : params['custid']) || null;
-    let paramSalesRecordId = (!salesRep ? weirdParams['salesrecordid'] : params['salesrecordid']) || null;
-    let paramCommRegId = (!salesRep ? weirdParams['commreg'] : params['commreg']) || null;
+    let paramCustomerId = (!params['salesrep'] ? weirdParams['custid'] : params['custid']) || null;
+    let paramSalesRecordId = (!params['salesrep'] ? weirdParams['salesrecordid'] : params['salesrecordid']) || null;
+    let paramCommRegId = (!params['salesrep'] ? weirdParams['commreg'] : params['commreg']) || null;
 
     try {
         if (!paramCustomerId) {
