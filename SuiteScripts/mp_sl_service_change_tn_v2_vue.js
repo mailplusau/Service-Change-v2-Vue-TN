@@ -338,6 +338,7 @@ const postOperations = {
             .map((item, index) => data['custrecord_service_day_' + item] ? (index + 1) : 0)
             .filter(item => item);
 
+        serviceChangeRecord.setValue({fieldId: 'custrecord_servicechg_date_effective', value: _parseIsoDatetime(data.custrecord_servicechg_date_effective, true)});
         serviceChangeRecord.setValue({fieldId: 'custrecord_servicechg_status', value: expSendEmail && !expClosedWon ? 4 : 1});
         serviceChangeRecord.setValue({fieldId: 'custrecord_servicechg_new_price', value: data.custrecord_servicechg_new_price});
         serviceChangeRecord.setValue({fieldId: 'custrecord_servicechg_old_price', value: data.custrecord_service_price});
