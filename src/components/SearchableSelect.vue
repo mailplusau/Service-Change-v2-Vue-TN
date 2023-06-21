@@ -118,12 +118,12 @@ export default {
 
             this.$emit('input', this.filteredOptions[this.selectedIndex].value);
             this.setSelectedIndex(-1);
-            this.search = '';
             this.$refs.dropdownButton.hide();
+            this.search = '';
         },
         onClickingDropDownItem(index) {
+            this.$emit('input', this.filteredOptions[index].value);
             this.search = '';
-            this.$emit('input', this.filteredOptions[index].value)
         }
     },
     computed: {
