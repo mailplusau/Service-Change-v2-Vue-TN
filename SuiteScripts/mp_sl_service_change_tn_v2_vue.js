@@ -499,13 +499,15 @@ function _calculateServiceRates(serviceChanges, assignedServices) {
     [...serviceChanges, ...assignedServices].forEach(item => {
         freqTerms.forEach(term => {
             if (item['custrecord_service_day_' + term]) {
-                monthlyServiceRate += parseFloat(item['custrecord_servicechg_new_price']);
+                let newPrice = (parseFloat(item['custrecord_servicechg_new_price']) || 0)
+
+                monthlyServiceRate += newPrice;
 
                 monthlyExtraServiceRate += ['Extra Service', 'Increase of Frequency'].includes(item['custrecord_servicechg_type']) ?
-                    parseFloat(item['custrecord_servicechg_new_price']) : 0;
+                    newPrice : 0;
 
                 monthlyReducedServiceRate += ['Reduction of Service', 'Price Decrease', 'Decrease of Frequency'].includes(item['custrecord_servicechg_type']) ?
-                    parseFloat(item['custrecord_servicechg_new_price']) : 0;
+                    newPrice : 0;
             }
         })
     })
