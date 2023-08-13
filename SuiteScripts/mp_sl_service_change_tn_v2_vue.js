@@ -467,8 +467,9 @@ const sharedFunctions = {
             let tmp = {};
 
             for (let column of item.columns) {
-                tmp[column.name] = item.getValue(column);
-                tmp[column.name + '_text'] = item.getText(column);
+                let columnName = column.join ? `${column.join.toLowerCase()}.${column.name}` : column.name
+                tmp[columnName] = item.getValue(column);
+                tmp[columnName + '_text'] = item.getText(column);
             }
 
             data.push(tmp);
