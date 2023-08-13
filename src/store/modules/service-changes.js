@@ -35,7 +35,7 @@ const state = {
 };
 
 const getters = {
-    services : state => state.services,
+    services : state => state.services.filter(item => !state.serviceChanges.map(i => i['custrecord_servicechg_service']).includes(item.internalid)),
     serviceChanges : state => state.serviceChanges,
     modal : state => state.modal,
     busy : state => state.busy,

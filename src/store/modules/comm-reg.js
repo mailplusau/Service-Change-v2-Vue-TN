@@ -2,7 +2,7 @@ import http from "@/utils/http";
 
 const state = {
     details: {
-        internalid: null,
+        id: null,
         custrecord_date_entry: new Date(),
         custrecord_comm_date: '',
         custrecord_comm_date_signup: '',
