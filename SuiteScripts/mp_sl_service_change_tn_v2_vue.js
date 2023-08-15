@@ -319,7 +319,6 @@ const postOperations = {
         let serviceRecord;
         let freqTerms = ['mon', 'tue', 'wed', 'thu', 'fri', 'adhoc'];
         let serviceChanges = sharedFunctions.getServiceChanges(commRegId);
-        let assignedServices = sharedFunctions.getAssignedServices(customerId);
 
         // Create/edit service change record
         let serviceChangeRecord = data.internalid ?
@@ -350,8 +349,8 @@ const postOperations = {
         if (commRegId) serviceChangeRecord.setValue({fieldId: 'custrecord_servicechg_comm_reg', value: commRegId});
 
         // TODO: if commRegId is null then this status is 4 (Quoted)
-        if (data.custrecord_servicechg_type === 'Change of Entity') // If this is Change of Entity, status is Active
-            serviceChangeRecord.setValue({fieldId: 'custrecord_servicechg_status', value: 2});
+        // if (data.custrecord_servicechg_type === 'Change of Entity') // If this is Change of Entity, status is Active
+        //     serviceChangeRecord.setValue({fieldId: 'custrecord_servicechg_status', value: 2});
 
         if (userRole !== 1000) {
             serviceChangeRecord.setValue({fieldId: 'custrecord_servicechg_created', value: userId});
@@ -389,7 +388,7 @@ const postOperations = {
         serviceChangeRecord.save({ignoreMandatoryFields: true});
 
         // go through all service change records and service records to calculate the rate
-        let {monthlyServiceRate, monthlyExtraServiceRate, monthlyReducedServiceRate} = _calculateServiceRates(serviceChanges, assignedServices);
+        let {monthlyServiceRate, monthlyExtraServiceRate, monthlyReducedServiceRate} = _calculateServiceRates(customerId, commRegId);
 
         customerRecord.setValue({fieldId: 'custentity_cust_monthly_service_value', value: monthlyServiceRate * 4.25});
         customerRecord.setValue({fieldId: 'custentity_monthly_extra_service_revenue', value: monthlyExtraServiceRate * 4.25});
@@ -492,14 +491,16 @@ function _updateDateEffectiveForAll(commRegId, serviceChanges, dateEffective) {
         record.submitFields({type: 'customrecord_commencement_register', id: commRegId, values: {'custrecord_comm_date': dateEffective}});
 }
 
-function _calculateServiceRates(serviceChanges, assignedServices) {
+function _calculateServiceRates(customerId, commRegId) {
+    let serviceChanges = sharedFunctions.getServiceChanges(commRegId);
+    let assignedServices = sharedFunctions.getAssignedServices(customerId);
     let monthlyServiceRate = 0.0, monthlyExtraServiceRate = 0.0, monthlyReducedServiceRate = 0.0;
     let freqTerms = ['mon', 'tue', 'wed', 'thu', 'fri', 'adhoc'];
 
     [...serviceChanges, ...assignedServices].forEach(item => {
         freqTerms.forEach(term => {
             if (item['custrecord_service_day_' + term]) {
-                let newPrice = (parseFloat(item['custrecord_servicechg_new_price']) || 0)
+                let newPrice = parseFloat(item['custrecord_servicechg_new_price']) || parseFloat(item['custrecord_service_price']) || 0
 
                 monthlyServiceRate += newPrice;
 

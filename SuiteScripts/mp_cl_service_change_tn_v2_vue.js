@@ -8,7 +8,7 @@
 
 let modules = {};
 
-const moduleNames = ['error', 'runtime', 'search', 'record', 'url', 'format', 'email', 'currentRecord'];
+const moduleNames = ['error', 'runtime', 'search', 'record', 'url', 'format', 'email', 'currentRecord', 'https'];
 
 // eslint-disable-next-line no-undef
 define(moduleNames.map(item => 'N/' + item), (...args) => {
