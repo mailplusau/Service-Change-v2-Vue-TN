@@ -390,9 +390,9 @@ const postOperations = {
         // go through all service change records and service records to calculate the rate
         let {monthlyServiceRate, monthlyExtraServiceRate, monthlyReducedServiceRate} = _calculateServiceRates(customerId, commRegId);
 
-        customerRecord.setValue({fieldId: 'custentity_cust_monthly_service_value', value: monthlyServiceRate * 4.25});
-        customerRecord.setValue({fieldId: 'custentity_monthly_extra_service_revenue', value: monthlyExtraServiceRate * 4.25});
-        customerRecord.setValue({fieldId: 'custentity_monthly_reduc_service_revenue', value: monthlyReducedServiceRate * 4.25});
+        customerRecord.setValue({fieldId: 'custentity_cust_monthly_service_value', value: monthlyServiceRate});
+        customerRecord.setValue({fieldId: 'custentity_monthly_extra_service_revenue', value: monthlyExtraServiceRate});
+        customerRecord.setValue({fieldId: 'custentity_monthly_reduc_service_revenue', value: monthlyReducedServiceRate});
 
         customerRecord.save({ignoreMandatoryFields: true});
 
@@ -498,19 +498,28 @@ function _calculateServiceRates(customerId, commRegId) {
     let freqTerms = ['mon', 'tue', 'wed', 'thu', 'fri', 'adhoc'];
 
     [...serviceChanges, ...assignedServices].forEach(item => {
+        let singleMonthlyServiceRate = 0, singleMonthlyExtraServiceRate = 0, singleMonthlyReducedServiceRate = 0;
+        let newPrice = parseFloat(item['custrecord_servicechg_new_price']) || parseFloat(item['custrecord_service_price']) || 0;
+
         freqTerms.forEach(term => {
             if (item['custrecord_service_day_' + term]) {
-                let newPrice = parseFloat(item['custrecord_servicechg_new_price']) || parseFloat(item['custrecord_service_price']) || 0
+                singleMonthlyServiceRate += newPrice;
 
-                monthlyServiceRate += newPrice;
-
-                monthlyExtraServiceRate += ['Extra Service', 'Increase of Frequency'].includes(item['custrecord_servicechg_type']) ?
+                singleMonthlyExtraServiceRate += ['Extra Service', 'Increase of Frequency'].includes(item['custrecord_servicechg_type']) ?
                     newPrice : 0;
 
-                monthlyReducedServiceRate += ['Reduction of Service', 'Price Decrease', 'Decrease of Frequency'].includes(item['custrecord_servicechg_type']) ?
+                singleMonthlyReducedServiceRate += ['Reduction of Service', 'Price Decrease', 'Decrease of Frequency'].includes(item['custrecord_servicechg_type']) ?
                     newPrice : 0;
             }
-        })
+        });
+
+        // If this service type is Fixed Charge (30), we keep the rates as is
+        // because Fixed Charge service's price is monthly rate instead of weekly rate.
+        monthlyServiceRate += parseInt(item['custrecord_service']) === 30 ? newPrice : singleMonthlyServiceRate * 4.25;
+        monthlyExtraServiceRate += (parseInt(item['custrecord_service']) === 30 && singleMonthlyExtraServiceRate > 0)
+            ? newPrice : singleMonthlyExtraServiceRate * 4.25;
+        monthlyReducedServiceRate += (parseInt(item['custrecord_service']) === 30 && singleMonthlyReducedServiceRate > 0)
+            ? newPrice : singleMonthlyReducedServiceRate * 4.25;
     })
 
     return {monthlyServiceRate, monthlyExtraServiceRate, monthlyReducedServiceRate};
