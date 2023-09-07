@@ -295,10 +295,25 @@ const postOperations = {
         let serviceId = serviceChangeRecord.getValue({fieldId: 'custrecord_servicechg_service'});
         let serviceRecord = record.load({type: 'customrecord_service', id: serviceId});
 
+        // Retrieve relevant info before deleting
+        let commRegId = serviceChangeRecord.getValue({fieldId: 'custrecord_servicechg_comm_reg'});
+        let commRegRecord = record.load({type: 'customrecord_commencement_register', id: commRegId});
+        let customerId = commRegRecord.getValue({fieldId: 'custrecord_customer'});
+        let customerRecord = record.load({type: 'customer', id: commRegRecord});
+
         record.delete({type: 'customrecord_servicechg', id: serviceChangeId});
 
         // Only delete the associated service record if it is inactive
-        if (serviceRecord.getValue({fieldId: 'isinactive'})) record.delete({type: 'customrecord_service', id: serviceId});
+        serviceRecord.setValue({fieldId: 'isinactive', value: true});
+        // if (serviceRecord.getValue({fieldId: 'isinactive'})) record.delete({type: 'customrecord_service', id: serviceId});
+
+        // TODO: recalculate monthly service rates after deletion
+        let {monthlyServiceRate, monthlyExtraServiceRate, monthlyReducedServiceRate} = _calculateServiceRates(customerId, commRegId);
+
+        customerRecord.setValue({fieldId: 'custentity_cust_monthly_service_value', value: monthlyServiceRate});
+        customerRecord.setValue({fieldId: 'custentity_monthly_extra_service_revenue', value: monthlyExtraServiceRate});
+        customerRecord.setValue({fieldId: 'custentity_monthly_reduc_service_revenue', value: monthlyReducedServiceRate});
+        customerRecord.save({ignoreMandatoryFields: true});
 
         _writeResponseJson(response, {serviceChangeId, serviceId});
     },
