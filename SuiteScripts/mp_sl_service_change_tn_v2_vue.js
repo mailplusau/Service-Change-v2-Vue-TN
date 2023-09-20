@@ -299,7 +299,7 @@ const postOperations = {
         let commRegId = serviceChangeRecord.getValue({fieldId: 'custrecord_servicechg_comm_reg'});
         let commRegRecord = record.load({type: 'customrecord_commencement_register', id: commRegId});
         let customerId = commRegRecord.getValue({fieldId: 'custrecord_customer'});
-        let customerRecord = record.load({type: 'customer', id: commRegRecord});
+        let customerRecord = record.load({type: 'customer', id: customerId});
 
         record.delete({type: 'customrecord_servicechg', id: serviceChangeId});
 
