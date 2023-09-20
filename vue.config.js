@@ -13,7 +13,7 @@ module.exports = {
     },
     plugins: [
       new HtmlWebpackPlugin({
-        filename: packageJson.netsuite.htmlFile,
+        filename: packageJson.netsuite.htmlFilename,
         template: 'public/index.html',  //template file to embed the source
         inlineSource: '.(js|css)$' // embed all javascript and css inline
       }),
