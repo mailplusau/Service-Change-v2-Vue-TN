@@ -1,12 +1,12 @@
 <template>
-    <b-modal centered v-model="modal" size="lg" static @hide="handleModalHide">
+    <b-modal centered v-model="modal" size="xl" static @hide="handleModalHide">
         <template v-slot:modal-header>
             <h1 class="text-center" v-if="form.internalid">Editing Service Change Record #{{form.internalid}}</h1>
             <h1 class="text-center" v-else>Creating New Service Change Record</h1>
         </template>
 
         <div class="row">
-            <div class="col-8 mb-4">
+            <div class="col-7 mb-4">
                 <b-input-group prepend="Date Effective">
                     <b-form-datepicker v-model="form.custrecord_servicechg_date_effective" :min="minEffectiveDate" value-as-date
                                        v-validate="'required|date_after'" data-vv-name="date_effective" disabled
@@ -16,16 +16,7 @@
                     <b-form-invalid-feedback :state="!errors.has('date_effective')">{{ errors.first('date_effective') }}</b-form-invalid-feedback>
                 </b-input-group>
             </div>
-            <div class="col-4 mb-4">
-                <b-input-group prepend="New Price">
-                    <b-form-input v-model="form.custrecord_servicechg_new_price" type="number" step="0.01" min="0"
-                                  v-validate="'required|min_value:0'" data-vv-name="new_price" :disabled="busy"
-                                  :class="errors.has('new_price') ? 'is-invalid' : ''"></b-form-input>
-
-                    <b-form-invalid-feedback :state="!errors.has('new_price')">{{ errors.first('new_price') }}</b-form-invalid-feedback>
-                </b-input-group>
-            </div>
-            <div class="col-8 mb-4">
+            <div class="col-5 mb-4">
                 <b-input-group prepend="Sales Type">
                     <SearchableSelect v-model="form.custrecord_servicechg_type" :options="salesTypes" :max-height="'30vh'"
                                       v-validate="'required'" data-vv-name="sales_type" :disabled="busy"
@@ -34,18 +25,27 @@
                     <b-form-invalid-feedback :state="!errors.has('sales_type')">{{ errors.first('sales_type') }}</b-form-invalid-feedback>
                 </b-input-group>
             </div>
-            <div class="col-4 mb-4">
-                <b-input-group prepend="Old Price">
-                    <b-form-input v-model="form.custrecord_service_price" type="number" step="0.01" disabled></b-form-input>
-                </b-input-group>
-            </div>
             <div class="col-12 mb-4">
                 <b-input-group prepend="Service">
-                    <SearchableSelect v-model="form.custrecord_service" :options="$store.getters['misc/serviceTypes']" :max-height="'30vh'"
+                    <SearchableSelect v-model="form.custrecord_service" :options="serviceTypes" :max-height="'30vh'"
                                       v-validate="'required'" data-vv-name="service_type" :disabled="busy"
                                       :class="errors.has('service_type') ? 'is-invalid' : ''"/>
 
                     <b-form-invalid-feedback :state="!errors.has('service_type')">{{ errors.first('service_type') }}</b-form-invalid-feedback>
+                </b-input-group>
+            </div>
+            <div class="col-6 mb-4">
+                <b-input-group prepend="Old Price">
+                    <b-form-input v-model="form.custrecord_service_price" type="number" step="0.01" disabled></b-form-input>
+                </b-input-group>
+            </div>
+            <div class="col-6 mb-4">
+                <b-input-group prepend="New Price">
+                    <b-form-input v-model="form.custrecord_servicechg_new_price" type="number" step="0.01" min="0"
+                                  v-validate="'required|min_value:0'" data-vv-name="new_price" :disabled="busy"
+                                  :class="errors.has('new_price') ? 'is-invalid' : ''"></b-form-input>
+
+                    <b-form-invalid-feedback :state="!errors.has('new_price')">{{ errors.first('new_price') }}</b-form-invalid-feedback>
                 </b-input-group>
             </div>
             <div class="col-12 mb-4">
@@ -55,32 +55,35 @@
             </div>
 
             <div class="col-3 mb-4">
-                <CheckboxInputGroup v-model="form.custrecord_service_day_mon" label="Monday" :disabled="busy"
-                                    @changed="updateFrequencyCheckboxes('mon')"/>
-            </div>
-            <div class="col-3 mb-4">
-                <CheckboxInputGroup v-model="form.custrecord_service_day_tue" label="Tuesday" :disabled="busy"
-                                    @changed="updateFrequencyCheckboxes('tue')"/>
-            </div>
-            <div class="col-3 mb-4">
-                <CheckboxInputGroup v-model="form.custrecord_service_day_wed" label="Wednesday" :disabled="busy"
-                                    @changed="updateFrequencyCheckboxes('wed')"/>
-            </div>
-            <div class="col-3 mb-4">
-                <CheckboxInputGroup v-model="form.custrecord_service_day_thu" label="Thursday" :disabled="busy"
-                                    @changed="updateFrequencyCheckboxes('thu')"/>
-            </div>
-            <div class="col-4">
-                <CheckboxInputGroup v-model="form.custrecord_service_day_fri" label="Friday" :disabled="busy"
-                                    @changed="updateFrequencyCheckboxes('fri')"/>
-            </div>
-            <div class="col-4">
                 <CheckboxInputGroup v-model="form.custrecord_service_day_daily" label="Daily" :disabled="busy"
                                     @changed="updateFrequencyCheckboxes('daily')"/>
             </div>
-            <div class="col-4">
+            <div class="col-3 mb-4">
                 <CheckboxInputGroup v-model="form.custrecord_service_day_adhoc" label="Adhoc" :disabled="busy"
                                     @changed="updateFrequencyCheckboxes('adhoc')"/>
+            </div>
+
+            <div class="col-6 mb-4"></div>
+
+            <div class="col-2">
+                <CheckboxInputGroup v-model="form.custrecord_service_day_mon" label="Monday" :disabled="busy"
+                                    @changed="updateFrequencyCheckboxes('mon')"/>
+            </div>
+            <div class="col-2">
+                <CheckboxInputGroup v-model="form.custrecord_service_day_tue" label="Tuesday" :disabled="busy"
+                                    @changed="updateFrequencyCheckboxes('tue')"/>
+            </div>
+            <div class="col-2">
+                <CheckboxInputGroup v-model="form.custrecord_service_day_wed" label="Wednesday" :disabled="busy"
+                                    @changed="updateFrequencyCheckboxes('wed')"/>
+            </div>
+            <div class="col-2">
+                <CheckboxInputGroup v-model="form.custrecord_service_day_thu" label="Thursday" :disabled="busy"
+                                    @changed="updateFrequencyCheckboxes('thu')"/>
+            </div>
+            <div class="col-2">
+                <CheckboxInputGroup v-model="form.custrecord_service_day_fri" label="Friday" :disabled="busy"
+                                    @changed="updateFrequencyCheckboxes('fri')"/>
             </div>
 
             <div class="col-12" v-if="!freqValid">
@@ -152,6 +155,9 @@ export default {
         },
         salesTypes() {
             return this.$store.getters['misc/salesTypes'].map(item => ({value: item.text, text: item.text}));
+        },
+        serviceTypes() {
+            return this.$store.getters['misc/serviceTypes'].filter(item => !this.$store.getters['service-changes/excludedServiceTypes'].includes(item.value))
         }
     },
     watch: {

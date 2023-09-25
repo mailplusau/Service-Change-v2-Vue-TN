@@ -24,8 +24,8 @@
             </b-row>
 
             <template v-slot:modal-footer>
-                <b-button size="sm" variant="danger" @click="modal = false" :disabled="going">No, cancel</b-button>
-                <b-button size="sm" variant="success" @click="proceed" :disabled="going || !$store.getters['nextPageToProceed']">Alright, let's go!</b-button>
+                <b-button size="sm" variant="danger" @click="modal = false" :disabled="going">Cancel</b-button>
+                <b-button size="sm" variant="success" @click="proceed" :disabled="going || !$store.getters['nextPageToProceed']">Continue</b-button>
             </template>
         </b-modal>
     </div>

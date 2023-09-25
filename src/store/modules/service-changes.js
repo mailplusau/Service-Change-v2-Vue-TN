@@ -40,7 +40,9 @@ const getters = {
     modal : state => state.modal,
     busy : state => state.busy,
     hasScheduledChanges : state => !!state.scheduledChanges.length,
-    tableData : state => [...state.serviceChanges, ...state.services.map(item => ({...item, isService: true}))]
+    tableData : state => [...state.serviceChanges, ...state.services.map(item => ({...item, isService: true}))],
+
+    excludedServiceTypes : state => state.serviceChanges.map(item => item.custrecord_service),
 };
 
 const mutations = {
@@ -62,6 +64,11 @@ const actions = {
 
         await _getExistingScheduledChanges(context);
 
+        // Set the default sales type to be the same as the Commencement Register
+        let index = context.rootGetters['misc/salesTypes']
+            .findIndex(item => parseInt(item.value) === parseInt(context.rootGetters['comm-reg/details'].custrecord_sale_type));
+        context.state.modal.defaults.custrecord_servicechg_type = context.rootGetters['misc/salesTypes'][index]?.text || '';
+
         context.commit('resetForm');
 
         context.state.busy = false;
@@ -76,6 +83,7 @@ const actions = {
 
             context.state.modal.form.internalid = item.isService ? null : item.id;
             context.state.modal.form.service_internalid = item.isService ? item.internalid : null;
+            if (item.isService) context.state.modal.form.custrecord_servicechg_type = context.state.modal.defaults.custrecord_servicechg_type;
 
             context.state.modal.form.custrecord_servicechg_date_effective = item.isService ?
                 context.state.modal.globalEffectiveDate :
