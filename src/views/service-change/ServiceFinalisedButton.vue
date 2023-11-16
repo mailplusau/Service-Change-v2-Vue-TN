@@ -1,5 +1,5 @@
 <template>
-    <div class="col-auto">
+    <div class="col-auto" v-if="!this.$store.getters['iframeMode']">
         <b-button variant="primary" @click="modal = true" v-show="!!$store.getters['nextPageToProceed']">
             Proceed to next page <b-icon icon="arrow-right-circle"></b-icon>
         </b-button>

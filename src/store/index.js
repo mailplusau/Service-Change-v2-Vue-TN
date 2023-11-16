@@ -15,6 +15,8 @@ const state = {
     userRole: null,
     isSalesRep: false,
 
+    iframeMode: false,
+
     extraParams: {
         scriptId: null,
         deployId: null,
@@ -42,6 +44,7 @@ const getters = {
     userId: state => state.userId,
     userRole: state => state.userRole,
     isSalesRep: state => state.isSalesRep,
+    iframeMode: state => state.iframeMode,
     extraParams: state => state.extraParams,
 
     globalModal: state => state.globalModal,
@@ -149,44 +152,45 @@ const actions = {
 async function _readAndVerifyUrlParams(context) {
     const params = new Proxy(new URLSearchParams(window.location.search), {
         get: (searchParams, prop) => searchParams.get(prop),
-    });
-
-    let weirdParams = params['custparam_params'] ? JSON.parse(params['custparam_params']) : {};
-    let salesRep = params['salesrep'] || weirdParams['salesrep'] === 'T';
-
-    let paramCustomerId = (!params['salesrep'] ? weirdParams['custid'] : params['custid']) || null;
-    let paramSalesRecordId = (!params['salesrep'] ? weirdParams['salesrecordid'] : params['salesrecordid']) || null;
-    let paramCommRegId = (!params['salesrep'] ? weirdParams['commreg'] : params['commreg']) || null;
-
-    try {
-        if (!paramCustomerId) {
-            console.log('Missing parameters')
-            context.commit('displayErrorGlobalModal', {
-                title: 'Missing parameters',
-                message: 'Please check that the url contains all necessary parameters.'
-            });
-            return;
-        }
-
-        let {customerId, salesRecordId, commRegId, userId, userRole} = await http.post('verifyParameters', {
-            customerId: parseInt(paramCustomerId), salesRecordId: parseInt(paramSalesRecordId), commRegId: parseInt(paramCommRegId)
         });
 
-        context.state.userId = userId;
-        context.state.userRole = userRole;
-        context.state.commRegId = commRegId;
-        context.state.customerId = customerId;
-        context.state.salesRecordId = salesRecordId;
-        context.state.isSalesRep = !!salesRep;
+        let weirdParams = params['custparam_params'] ? JSON.parse(params['custparam_params']) : {};
+        let salesRep = params['salesrep'] || weirdParams['salesrep'] === 'T';
 
-        context.state.extraParams.scriptId = (!params['salesrep'] ? weirdParams['customid'] : params['customid']) || null;
-        context.state.extraParams.deployId = (!params['salesrep'] ? weirdParams['customdeploy'] : params['customdeploy']) || null;
-        context.state.extraParams.sendEmail = weirdParams['sendemail'] && weirdParams['sendemail'] === 'T';
-        context.state.extraParams.suspects = (!params['salesrep'] ? weirdParams['suspects'] : params['suspects']) || null;
-        context.state.extraParams.closedWon = (!params['salesrep'] ? weirdParams['closedwon'] : params['closedwon']) || false;
-        context.state.extraParams.oppWithValue = (!params['salesrep'] ? weirdParams['oppwithvalue'] : params['oppwithvalue']) || false;
-        context.state.extraParams.dateEffective = weirdParams['date'] || null;
-    } catch (e) { console.error(e); }
+        let paramCustomerId = (!params['salesrep'] ? weirdParams['custid'] : params['custid']) || null;
+        let paramSalesRecordId = (!params['salesrep'] ? weirdParams['salesrecordid'] : params['salesrecordid']) || null;
+        let paramCommRegId = (!params['salesrep'] ? weirdParams['commreg'] : params['commreg']) || null;
+
+        try {
+            if (!paramCustomerId) {
+                console.log('Missing parameters')
+                context.commit('displayErrorGlobalModal', {
+                    title: 'Missing parameters',
+                    message: 'Please check that the url contains all necessary parameters.'
+                });
+                return;
+            }
+
+            let {customerId, salesRecordId, commRegId, userId, userRole} = await http.post('verifyParameters', {
+                customerId: parseInt(paramCustomerId), salesRecordId: parseInt(paramSalesRecordId), commRegId: parseInt(paramCommRegId)
+            });
+
+            context.state.userId = userId;
+            context.state.userRole = userRole;
+            context.state.commRegId = commRegId;
+            context.state.customerId = customerId;
+            context.state.salesRecordId = salesRecordId;
+            context.state.isSalesRep = !!salesRep;
+
+            context.state.extraParams.scriptId = (!params['salesrep'] ? weirdParams['customid'] : params['customid']) || null;
+            context.state.extraParams.deployId = (!params['salesrep'] ? weirdParams['customdeploy'] : params['customdeploy']) || null;
+            context.state.extraParams.suspects = (!params['salesrep'] ? weirdParams['suspects'] === 'T' : params['suspects'] === 'T') || null;
+            context.state.extraParams.sendEmail = (!params['sendemail'] ? weirdParams['sendemail'] === 'T' : params['sendemail'] === 'T') || false;
+            context.state.extraParams.closedWon = (!params['salesrep'] ? weirdParams['closedwon'] === 'T' : params['closedwon'] === 'T') || false;
+            context.state.extraParams.oppWithValue = (!params['salesrep'] ? weirdParams['oppwithvalue'] === 'T' : params['oppwithvalue'] === 'T') || false;
+            context.state.extraParams.dateEffective = weirdParams['date'] || null;
+            context.state.iframeMode = params['iframeMode'] === 'T';
+        } catch (e) { console.error(e); }
 }
 
 const store = new Vuex.Store({

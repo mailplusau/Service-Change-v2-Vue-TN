@@ -14,7 +14,7 @@ const state = {
             custrecord_service: '', // Service Type ID
             custrecord_service_description: '', // Description
             custrecord_service_price: 0, // Price/Old Price
-            custrecord_servicechg_new_price: 0, // New Price
+            custrecord_servicechg_new_price: '', // New Price
             custrecord_servicechg_new_freq: '', // New Frequency
 
             custrecord_service_day_adhoc: false,
@@ -121,8 +121,6 @@ const actions = {
         context.state.modal.defaults.custrecord_servicechg_date_effective = context.state.modal.globalEffectiveDate;
 
         try {
-            _setTimeForDateObject(context.state.modal.globalEffectiveDate);
-
             await http.post('updateEffectiveDateForAll', {
                 commRegId: context.rootGetters['commRegId'],
                 effectiveDate: context.state.modal.globalEffectiveDate
@@ -149,8 +147,6 @@ const actions = {
     saveServiceChange : async context => {
         context.state.modal.busy = true;
         try {
-            _setTimeForDateObject(context.state.modal.form.custrecord_servicechg_date_effective);
-
             context.state.modal.form.custrecord_servicechg_type_id = context.rootGetters['misc/salesTypes']
                 .filter(item => item.text === context.state.modal.form.custrecord_servicechg_type)[0].value;
 
@@ -163,7 +159,10 @@ const actions = {
                 data: context.state.modal.form,
 
                 salesRecordId: context.rootGetters['salesRecordId'],
-                extraParams: {},
+                extraParams: {
+                    expSendEmail: context.rootGetters['extraParams'].sendEmail,
+                    expClosedWon: context.rootGetters['extraParams'].closedWon
+                },
             });
 
             await _getServiceChangesAndServices(context);
@@ -196,15 +195,10 @@ async function _getExistingScheduledChanges(context) {
     if (Object.prototype.toString.call(context.state.modal.globalEffectiveDate) !== '[object Date]') return;
 
     try {
-        _setTimeForDateObject(context.state.modal.globalEffectiveDate);
-
-        let dt = context.state.modal.globalEffectiveDate.toISOString().split(/[: T-]/).map(parseFloat);
-        let dateEffective = dt[2] + '/' + dt[1] + '/' + dt[0];
-
         context.state.scheduledChanges = await http.get('getScheduledServiceChanges', {
             customerId: context.rootGetters['customerId'],
             commRegId: context.rootGetters['commRegId'],
-            dateEffective
+            dateEffective: context.state.modal.globalEffectiveDate,
         });
     } catch (e) { console.error(e); }
 }

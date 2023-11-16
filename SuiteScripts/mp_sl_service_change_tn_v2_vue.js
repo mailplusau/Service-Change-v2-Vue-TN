@@ -175,7 +175,7 @@ const getOperations = {
         _writeResponseJson(response, data);
     },
     'getScheduledServiceChanges' : function (response, {customerId, commRegId, dateEffective}) {
-        let {search} = NS_MODULES;
+        let {search, format} = NS_MODULES;
         let data = [];
 
         let serviceChangeSearch = search.load({id: 'customsearch_smc_service_chg', type: 'customrecord_servicechg'});
@@ -183,7 +183,7 @@ const getOperations = {
         serviceChangeSearch.filters.push(search.createFilter({
             name: 'custrecord_servicechg_date_effective',
             operator: search.Operator.ON,
-            values: dateEffective // This must be in format of DD/MM/YYYY
+            values: format.format({value: new Date(dateEffective), type: format.Type.DATE})
         }));
         serviceChangeSearch.filters.push(search.createFilter({
             name: 'custrecord_servicechg_status',
@@ -320,7 +320,7 @@ const postOperations = {
     'updateEffectiveDateForAll' : function (response, {commRegId, effectiveDate}) {
         let serviceChanges = sharedFunctions.getServiceChanges(commRegId);
 
-        _updateDateEffectiveForAll(commRegId, serviceChanges, _parseIsoDatetime(effectiveDate, true));
+        _updateDateEffectiveForAll(commRegId, serviceChanges, new Date(effectiveDate));
 
         _writeResponseJson(response, 'Effective Date Updated');
     },
@@ -352,14 +352,16 @@ const postOperations = {
             .map((item, index) => data['custrecord_service_day_' + item] ? (index + 1) : 0)
             .filter(item => item);
 
-        serviceChangeRecord.setValue({fieldId: 'custrecord_servicechg_date_effective', value: _parseIsoDatetime(data.custrecord_servicechg_date_effective, true)});
-        serviceChangeRecord.setValue({fieldId: 'custrecord_servicechg_status', value: expSendEmail && !expClosedWon ? 4 : 1});
+        serviceChangeRecord.setValue({fieldId: 'custrecord_servicechg_date_effective', value: new Date(data.custrecord_servicechg_date_effective)});
+        serviceChangeRecord.setValue({fieldId: 'custrecord_servicechg_status', value: expSendEmail && !expClosedWon ? 4 : 1}); // Quote (4) | Scheduled (1)
         serviceChangeRecord.setValue({fieldId: 'custrecord_servicechg_new_price', value: data.custrecord_servicechg_new_price});
         serviceChangeRecord.setValue({fieldId: 'custrecord_servicechg_old_price', value: data.custrecord_service_price});
         serviceChangeRecord.setValue({fieldId: 'custrecord_servicechg_new_freq', value: freqArray});
         serviceChangeRecord.setValue({fieldId: 'custrecord_servicechg_old_freq', value: oldFreq && oldFreq.length ? oldFreq : newFreq});
         serviceChangeRecord.setValue({fieldId: 'custrecord_servicechg_type', value: data.custrecord_servicechg_type});
-        serviceChangeRecord.setValue({fieldId: 'custrecord_default_servicechg_record', value: 1});
+
+        if (!data.service_internalid && !data.internalid) // This is the first service change record for a new service, set the default as Yes (1)
+            serviceChangeRecord.setValue({fieldId: 'custrecord_default_servicechg_record', value: 1});
 
         if (commRegId) serviceChangeRecord.setValue({fieldId: 'custrecord_servicechg_comm_reg', value: commRegId});
 
@@ -411,7 +413,7 @@ const postOperations = {
 
         customerRecord.save({ignoreMandatoryFields: true});
 
-        _updateDateEffectiveForAll(commRegId, serviceChanges, _parseIsoDatetime(data.custrecord_servicechg_date_effective, true));
+        _updateDateEffectiveForAll(commRegId, serviceChanges, new Date(data.custrecord_servicechg_date_effective));
 
         // End
         _writeResponseJson(response, {commRegId});
@@ -553,15 +555,15 @@ function _createCommencementRegister(customerId, salesRecordId, data, extraParam
     let commRegRecord = record.create({type: 'customrecord_commencement_register'});
 
     commRegRecord.setValue({fieldId: 'custrecord_date_entry', value: new Date()});
-    commRegRecord.setValue({fieldId: 'custrecord_comm_date', value: _parseIsoDatetime(data.custrecord_servicechg_date_effective, true)});
-    commRegRecord.setValue({fieldId: 'custrecord_comm_date_signup', value: _parseIsoDatetime(data.custrecord_servicechg_date_effective, true)});
+    commRegRecord.setValue({fieldId: 'custrecord_comm_date', value: new Date(data.custrecord_servicechg_date_effective)});
+    commRegRecord.setValue({fieldId: 'custrecord_comm_date_signup', value: new Date(data.custrecord_servicechg_date_effective)});
     commRegRecord.setValue({fieldId: 'custrecord_customer', value: customerId});
     commRegRecord.setValue({fieldId: 'custrecord_salesrep', value: expSendEmail ? userId : 109783});
-    commRegRecord.setValue({fieldId: 'custrecord_std_equiv', value: 1});
-    commRegRecord.setValue({fieldId: 'custrecord_wkly_svcs', value: '5'});
+    commRegRecord.setValue({fieldId: 'custrecord_std_equiv', value: 1}); // Standard Equivalent
+    commRegRecord.setValue({fieldId: 'custrecord_wkly_svcs', value: '5'}); // Weekly Services
     commRegRecord.setValue({fieldId: 'custrecord_in_out', value: 2}); // Inbound
     commRegRecord.setValue({fieldId: 'custrecord_state', value: state});
-    commRegRecord.setValue({fieldId: 'custrecord_trial_status', value: expSendEmail && !expClosedWon ? 10 : 9});
+    commRegRecord.setValue({fieldId: 'custrecord_trial_status', value: expSendEmail && !expClosedWon ? 10 : 9}); // Quote (10) or Scheduled (9)
     commRegRecord.setValue({fieldId: 'custrecord_sale_type', value: data.custrecord_servicechg_type_id});
 
     if (userRole !== 1000) commRegRecord.setValue({fieldId: 'custrecord_franchisee', value: partnerId});

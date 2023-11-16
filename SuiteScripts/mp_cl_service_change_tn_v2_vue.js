@@ -16,6 +16,13 @@ define(moduleNames.map(item => 'N/' + item), (...args) => {
             modules[moduleName] = args[index];
 
         function pageInit() {
+            const params = new Proxy(new URLSearchParams(window.location.search), {
+                get: (searchParams, prop) => searchParams.get(prop),
+            });
+            if (params['iframeMode'] === 'T') {
+                document.querySelector('div#div__header').remove();
+                document.querySelector('div#div__body > form > table > tbody > tr:first-child').remove();
+            }
             console.log('Client script init.');
         }
 
