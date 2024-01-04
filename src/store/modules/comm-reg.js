@@ -27,7 +27,9 @@ const getters = {
     texts : state => state.texts,
 };
 
-const mutations = {};
+const mutations = {
+    setId : (state, id) => state.details.id = id
+};
 
 const actions = {
     init : async context => {

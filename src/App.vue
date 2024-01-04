@@ -1,126 +1,62 @@
 <template>
-    <div id="app" class="container-fluid px-4">
-        <ServiceChange />
+    <v-app :style="{background: $vuetify.theme.themes[theme].background}">
+        <v-main>
+            <v-container fluid>
+                <v-row class="mx-1" justify="space-between" align="center">
+                    <v-col cols="auto">
+                        <h2 class="primary--text" v-html="pageTitle"></h2>
+                    </v-col>
 
-        <GlobalNoticeModal />
-    </div>
+                    <v-col cols="auto">
+                        <!--                        <a @click="$store.dispatch('addShortcut')" class="subtitle-1">Add To Shortcuts <v-icon size="20" color="primary">mdi-open-in-new</v-icon></a>-->
+                    </v-col>
+                </v-row>
+            </v-container>
+
+            <v-divider class="mb-3"></v-divider>
+
+            <v-container fluid>
+                <v-row justify="center">
+                    <v-col cols="12">
+                        <ServiceChangesView />
+                    </v-col>
+                </v-row>
+
+                <v-row justify="end" v-show="!$store.getters['standaloneMode']">
+                    <v-col cols="auto" class="mr-3">
+                        <ServiceFinaliseDialog />
+                    </v-col>
+                </v-row>
+            </v-container>
+
+        </v-main>
+
+        <GlobalNotificationModal />
+    </v-app>
 </template>
 
 <script>
-import ServiceChange from './views/service-change/Main';
-import GlobalNoticeModal from "@/components/GlobalNoticeModal";
+import GlobalNotificationModal from "@/components/GlobalNotificationModal";
+import ServiceChangesView from "@/views/service-changes/Main";
+import ServiceFinaliseDialog from '@/views/service-changes/ServiceFinaliseDialog.vue';
 
 export default {
     name: 'App',
     components: {
-        GlobalNoticeModal,
-        ServiceChange
+        ServiceFinaliseDialog,
+        GlobalNotificationModal,
+        ServiceChangesView,
     },
     beforeCreate() {
         this.$store.dispatch('init');
     },
-    mounted() {
-        this.registerCustomValidationRules();
-    },
-    methods: {
-        registerCustomValidationRules() {
-            this.$validator.extend('date_after', {
-                getMessage(field) {
-                    return `the ${field} field must be tomorrow or further in the future.`;
-                },
-                validate(value) {
-                    let tomorrow = new Date();
-                    tomorrow.setDate(tomorrow.getDate() + 1);
-                    tomorrow.setHours(0, 0, 0, 0);
-
-                    return Object.prototype.toString.call(value) === '[object Date]' && value >= tomorrow;
-                }
-            });
-            this.$validator.extend('aus_phone', {
-                getMessage(field) {
-                    return `the ${field} field must be a valid Australian phone number.`;
-                },
-                validate(value) {
-                    let australiaPhoneFormat = /^(\+\d{2}[ -]{0,1}){0,1}(((\({0,1}[ -]{0,1})0{0,1}\){0,1}[2|3|7|8]{1}\){0,1}[ -]*(\d{4}[ -]{0,1}\d{4}))|(1[ -]{0,1}(300|800|900|902)[ -]{0,1}((\d{6})|(\d{3}[ -]{0,1}\d{3})))|(13[ -]{0,1}([\d -]{5})|((\({0,1}[ -]{0,1})0{0,1}\){0,1}4{1}[\d -]{8,10})))$/;
-                    return australiaPhoneFormat.test(value);
-                }
-            });
-            this.$validator.extend('aus_abn', {
-                getMessage(field) {
-                    return `the ${field} field must be a valid Australian ABN number.`;
-                },
-                validate(value) {
-
-                    if (!value || value.length !== 11) {
-                        return false;
-                    }
-                    let weights = [10, 1, 3, 5, 7, 9, 11, 13, 15, 17, 19],
-                        checksum = value.split('').map(Number).reduce(
-                            function(total, digit, index) {
-                                if (!index) {
-                                    digit--;
-                                }
-                                return total + (digit * weights[index]);
-                            },
-                            0
-                        );
-
-                    return !(!checksum || checksum % 89 !== 0);
-
-                }
-            });
+    computed:{
+        theme() {
+            return (this.$vuetify.theme.dark) ? 'dark' : 'light'
         },
+        pageTitle() {
+            return this.$store.getters['pageTitle'];
+        }
     }
-}
+};
 </script>
-
-<style>
-#app {
-    font-family: Avenir, Helvetica, Arial, sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    text-align: center;
-    color: #2c3e50;
-    margin-top: 60px;
-}
-
-.custom-select {
-    position: relative;
-    flex: 1 1 auto;
-    width: 1%;
-    min-width: 0;
-    font-size: 13px;
-}
-
-.pac-container {
-    z-index: 1100 !important;
-}
-
-body.modal-open {
-    overflow: hidden !important;
-}
-
-.mp-header {
-    color: #387080;
-}
-
-.mp-text {
-    color: #103d39
-}
-
-/* Styles to give NetSuite the MailPlus color */
-div#body {
-    background-color: #cfe0ce !important;
-}
-
-ul#NS_MENU_ID0, ul#NS_MENU_ID0 > .ns-menuitem > a {
-    background-color: #cfe0ce !important;
-}
-
-ul.pagination.b-pagination, ul.nav.nav-tabs {
-    display: flex !important;
-    padding-left: 0 !important;
-    list-style: none !important;
-    margin: 0 !important;
-}
-</style>

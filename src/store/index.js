@@ -1,21 +1,21 @@
 import Vue from 'vue';
 import Vuex from 'vuex';
 import modules from './modules';
-import http from "@/utils/http";
+import {getWindowContext, VARS} from '@/utils/utils.mjs';
+import http from '@/utils/http';
 
 const baseURL = 'https://' + process.env.VUE_APP_NS_REALM + '.app.netsuite.com';
 
 Vue.use(Vuex)
 
 const state = {
+    pageTitle: VARS.pageTitle,
     customerId: null,
     salesRecordId: null,
     commRegId: null,
     userId: null,
     userRole: null,
     isSalesRep: false,
-
-    iframeMode: false,
 
     extraParams: {
         scriptId: null,
@@ -27,24 +27,30 @@ const state = {
         dateEffective: null,
     },
 
+    standaloneMode: false,
+
     globalModal: {
         open: false,
-        title: '',
-        body: '',
+        title: 'Default title',
+        body: 'This is a global modal that will deliver notification on global level.',
         busy: false,
+        progress: -1,
         persistent: true,
-        isError: false
+        isError: false,
+        maxWidth: 500,
+        buttons: [], // [{color, action, text}, ...] || 'spacer'
     },
 };
 
 const getters = {
+    pageTitle: state => state.pageTitle,
     customerId: state => state.customerId,
     commRegId: state => state.commRegId,
     salesRecordId: state => state.salesRecordId,
     userId: state => state.userId,
     userRole: state => state.userRole,
     isSalesRep: state => state.isSalesRep,
-    iframeMode: state => state.iframeMode,
+    standaloneMode : state => state.standaloneMode,
     extraParams: state => state.extraParams,
 
     globalModal: state => state.globalModal,
@@ -58,38 +64,67 @@ const getters = {
 };
 
 const mutations = {
-    setGlobalModal: (state, open = true) => {
-        state.globalModal.open = open;
+    closeGlobalModal: state => {
+        state.globalModal.title = '';
+        state.globalModal.body = '';
+        state.globalModal.busy = false;
+        state.globalModal.open = false;
+        state.globalModal.progress = -1;
+        state.globalModal.persistent = false;
+        state.globalModal.isError = false;
+        state.globalModal.maxWidth = 500;
+        state.globalModal.buttons.splice(0);
     },
-    displayErrorGlobalModal: (state, {title, message}) => {
+    displayErrorGlobalModal: (state, {title, message, buttons = [], maxWidth = 500}) => {
         state.globalModal.title = title;
         state.globalModal.body = message;
         state.globalModal.busy = false;
         state.globalModal.open = true;
+        state.globalModal.progress = -1;
         state.globalModal.persistent = true;
         state.globalModal.isError = true;
+        state.globalModal.maxWidth = maxWidth;
+        state.globalModal.buttons = [...buttons];
     },
-    displayBusyGlobalModal: (state, {title, message, open}) => {
+    displayBusyGlobalModal: (state, {title, message, open = true, progress = -1, buttons = [], maxWidth = 500}) => {
         state.globalModal.title = title;
         state.globalModal.body = message;
         state.globalModal.busy = open;
         state.globalModal.open = open;
-        state.globalModal.persistent = false;
+        state.globalModal.progress = progress;
+        state.globalModal.persistent = true;
         state.globalModal.isError = false;
+        state.globalModal.maxWidth = maxWidth;
+        state.globalModal.buttons = [...buttons];
     },
-    displayInfoGlobalModal: (state, {title, message}) => {
+    displayInfoGlobalModal: (state, {title, message, persistent = false, buttons = [], maxWidth = 500}) => {
         state.globalModal.title = title;
         state.globalModal.body = message;
         state.globalModal.busy = false;
         state.globalModal.open = true;
-        state.globalModal.persistent = false;
+        state.globalModal.progress = -1;
+        state.globalModal.persistent = persistent;
         state.globalModal.isError = false;
+        state.globalModal.maxWidth = maxWidth;
+        state.globalModal.buttons = [...buttons];
+    },
+
+    setPageTitle: (state, title) => {
+        state.pageTitle = title || VARS.pageTitle;
+
+        if (parent['setMPTheme'])
+            parent.setMPTheme(title + ' - NetSuite Australia (Mail Plus Pty Ltd)')
     }
 };
 
 const actions = {
-    init: async context => {
-        await _readAndVerifyUrlParams(context);
+    addShortcut : () => {
+        getWindowContext().window['addShortcut']();
+    },
+    init : async context => {
+        if (!getWindowContext().location.href.includes(baseURL)) return;
+
+        await _readUrlParams(context);
 
         await Promise.allSettled([
             context.dispatch('misc/init'),
@@ -99,17 +134,16 @@ const actions = {
 
         await context.dispatch('service-changes/init');
     },
-    handleException: (context, {title, message}) => {
+    handleException : (context, {title, message}) => {
         context.commit('displayErrorGlobalModal', {
             title, message
         })
     },
-    goToNetSuiteCustomerPage: context => {
-        window.location.href = baseURL + '/app/common/entity/custjob.nl?id=' + context.state.customerId;
-    },
     goToNextPage: async context => {
+        context.commit('displayBusyGlobalModal', {title: 'Redirecting', message: `Moving to <b>${context.getters['nextPageToProceed']}</b>. Please wait...`});
+
         if (!context.state.isSalesRep && context.state.extraParams.sendEmail)
-            window.location.href = context.state.extraParams.suspects ?
+            getWindowContext().location.href = context.state.extraParams.suspects ?
                 baseURL + await http.get('getScriptUrl', {
                     scriptId: 'customscript_sl_send_email_module',
                     deploymentId: 'customdeploy_sl_send_email_module',
@@ -130,7 +164,7 @@ const actions = {
                     }
                 })
         else if (!context.state.isSalesRep)
-            window.location.href = baseURL + await http.get('getScriptUrl', {
+            getWindowContext().location.href = baseURL + await http.get('getScriptUrl', {
                 scriptId: 'customscript_sl_service_change',
                 deploymentId: 'customdeploy_sl_service_change',
                 params: {
@@ -138,7 +172,7 @@ const actions = {
                 }
             });
         else if (context.state.isSalesRep)
-            window.location.href = baseURL + await http.get('getScriptUrl', {
+            getWindowContext().location.href = baseURL + await http.get('getScriptUrl', {
                 scriptId: 'customscript_sl_finalise_page_tn_v2_vue',
                 deploymentId: 'customdeploy_sl_finalise_page_tn_v2_vue',
                 params: {
@@ -149,48 +183,52 @@ const actions = {
     }
 };
 
-async function _readAndVerifyUrlParams(context) {
-    const params = new Proxy(new URLSearchParams(window.location.search), {
+async function _readUrlParams(context) {
+    let currentUrl = getWindowContext().location.href;
+    let [, queryString] = currentUrl.split('?');
+
+    const params = new Proxy(new URLSearchParams(`?${queryString}`), {
         get: (searchParams, prop) => searchParams.get(prop),
+    });
+
+    context.state.standaloneMode = !!params['standalone'];
+
+    let weirdParams = params['custparam_params'] ? JSON.parse(params['custparam_params']) : {};
+    let salesRep = params['salesrep'] || weirdParams['salesrep'] === 'T';
+
+    let paramCustomerId = (!params['salesrep'] ? weirdParams['custid'] : params['custid']) || null;
+    let paramSalesRecordId = (!params['salesrep'] ? weirdParams['salesrecordid'] : params['salesrecordid']) || null;
+    let paramCommRegId = (!params['salesrep'] ? weirdParams['commreg'] : params['commreg']) || null;
+
+    try {
+        if (!paramCustomerId) {
+            console.log('Missing parameters')
+            context.commit('displayErrorGlobalModal', {
+                title: 'Missing parameters',
+                message: 'Please check that the url contains all necessary parameters.'
+            });
+            return;
+        }
+
+        let {customerId, salesRecordId, commRegId, userId, userRole} = await http.post('verifyParameters', {
+            customerId: parseInt(paramCustomerId), salesRecordId: parseInt(paramSalesRecordId), commRegId: parseInt(paramCommRegId)
         });
 
-        let weirdParams = params['custparam_params'] ? JSON.parse(params['custparam_params']) : {};
-        let salesRep = params['salesrep'] || weirdParams['salesrep'] === 'T';
+        context.state.userId = userId;
+        context.state.userRole = userRole;
+        context.state.commRegId = commRegId;
+        context.state.customerId = customerId;
+        context.state.salesRecordId = salesRecordId;
+        context.state.isSalesRep = !!salesRep;
 
-        let paramCustomerId = (!params['salesrep'] ? weirdParams['custid'] : params['custid']) || null;
-        let paramSalesRecordId = (!params['salesrep'] ? weirdParams['salesrecordid'] : params['salesrecordid']) || null;
-        let paramCommRegId = (!params['salesrep'] ? weirdParams['commreg'] : params['commreg']) || null;
-
-        try {
-            if (!paramCustomerId) {
-                console.log('Missing parameters')
-                context.commit('displayErrorGlobalModal', {
-                    title: 'Missing parameters',
-                    message: 'Please check that the url contains all necessary parameters.'
-                });
-                return;
-            }
-
-            let {customerId, salesRecordId, commRegId, userId, userRole} = await http.post('verifyParameters', {
-                customerId: parseInt(paramCustomerId), salesRecordId: parseInt(paramSalesRecordId), commRegId: parseInt(paramCommRegId)
-            });
-
-            context.state.userId = userId;
-            context.state.userRole = userRole;
-            context.state.commRegId = commRegId;
-            context.state.customerId = customerId;
-            context.state.salesRecordId = salesRecordId;
-            context.state.isSalesRep = !!salesRep;
-
-            context.state.extraParams.scriptId = (!params['salesrep'] ? weirdParams['customid'] : params['customid']) || null;
-            context.state.extraParams.deployId = (!params['salesrep'] ? weirdParams['customdeploy'] : params['customdeploy']) || null;
-            context.state.extraParams.suspects = (!params['salesrep'] ? weirdParams['suspects'] === 'T' : params['suspects'] === 'T') || null;
-            context.state.extraParams.sendEmail = (!params['sendemail'] ? weirdParams['sendemail'] === 'T' : params['sendemail'] === 'T') || false;
-            context.state.extraParams.closedWon = (!params['salesrep'] ? weirdParams['closedwon'] === 'T' : params['closedwon'] === 'T') || false;
-            context.state.extraParams.oppWithValue = (!params['salesrep'] ? weirdParams['oppwithvalue'] === 'T' : params['oppwithvalue'] === 'T') || false;
-            context.state.extraParams.dateEffective = weirdParams['date'] || null;
-            context.state.iframeMode = params['iframeMode'] === 'T';
-        } catch (e) { console.error(e); }
+        context.state.extraParams.scriptId = (!params['salesrep'] ? weirdParams['customid'] : params['customid']) || null;
+        context.state.extraParams.deployId = (!params['salesrep'] ? weirdParams['customdeploy'] : params['customdeploy']) || null;
+        context.state.extraParams.suspects = (!params['salesrep'] ? weirdParams['suspects'] === 'T' : params['suspects'] === 'T') || null;
+        context.state.extraParams.sendEmail = (!params['sendemail'] ? weirdParams['sendemail'] === 'T' : params['sendemail'] === 'T') || false;
+        context.state.extraParams.closedWon = (!params['salesrep'] ? weirdParams['closedwon'] === 'T' : params['closedwon'] === 'T') || false;
+        context.state.extraParams.oppWithValue = (!params['salesrep'] ? weirdParams['oppwithvalue'] === 'T' : params['oppwithvalue'] === 'T') || false;
+        context.state.extraParams.dateEffective = weirdParams['date'] || null;
+    } catch (e) { console.error(e); }
 }
 
 const store = new Vuex.Store({

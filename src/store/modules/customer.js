@@ -1,4 +1,5 @@
 import http from "@/utils/http";
+import {getWindowContext} from '@/utils/utils.mjs';
 
 const state = {
     data: [],
@@ -58,8 +59,8 @@ function _updateFormTitleAndHeader(context) {
 
     title = 'Add / Edit Service : ' + context.state.details.entityid + ' ' + context.state.details.companyname + ' - NetSuite Australia (Mail Plus Pty Ltd)';
 
-    document.querySelector('h1.uir-record-type').innerHTML = header;
-    document.title = title;
+    context.commit('setPageTitle', header, {root: true});
+    if (getWindowContext().setMPTheme) getWindowContext().setMPTheme(title);
 }
 
 export default {
